@@ -16,9 +16,9 @@ int  cymk[4];
 
 void setup() {
     // put your setup code here, to run once:
-    Serial.begin(9600);
+    Serial.begin(115200);
     Serial3.begin(115200);
-    Serial3.write("?");
+    // Serial3.write("?");
 
     // set output Pins
     pinMode(black1_pin, OUTPUT);
@@ -84,41 +84,57 @@ boolean grbl_cmd()
 {
     int i; 
 
-    Serial3.write("G91 G0  X1");
+    grbl_status();
     if (Serial3.available() > 0);
     {
-        for ( i=0; i < 10; i++ )
-        {
-            GRBLdata = Serial3.readString();
-            Serial.print("GBRL output: ");
-            Serial.println(GRBLdata);
-            delay(100);
-        }
+            Serial3.write(gcode);
+            grbl_status();
     }
 }
 
-void grbl_status()
+boolean grbl_status()
 {
     char c;
     
+
     if (Serial3.available() > 0);
     {
+
+        for ( ;; )
+        {
+            Serial3.write("?");
+            GRBLdata = Serial3.readString();
+            if (DEBUG)
+            {
+                Serial.print("GBRL output: ");
+                Serial.println(GRBLdata);
+            }
+
+            if ( GRBLdata.startsWith("<Idle,") )
+            {
+                return true;
+            }
+            delay(10);
+        }
+            /*
         c = Serial3.peek();
         if ( c == '<' )
         {
             GRBLdata = Serial3.readString();
+            Serial.print("GBRL output: ");
+            Serial.println(GRBLdata);
             if ( GRBLdata.startsWith("<Idle,") )
             {
                 Serial.print("GBRL output: ");
                 Serial.println(GRBLdata);
             }
         }
+            */
     }
 }
 
 void loop() {
 
-    grbl_status();
 
     // put your main code here, to run repeatedly
     if (Serial.available() > 0) {
@@ -138,6 +154,18 @@ void loop() {
         {
             DEBUG=false;
             Serial.println("DEBUG disabled");
+        }
+        else if ( input[0] == '?' )
+        {
+            grbl_status();
+        }
+        else if ( input[0] == 't' )
+        {
+            Serial3.write("G91 G1 F500 x100 y100\n");
+        }
+        else if ( input[0] == 's' )
+        {
+            Serial3.write("??");
         }
         else 
         {
