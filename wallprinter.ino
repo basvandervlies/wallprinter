@@ -1,6 +1,6 @@
 String GRBLdata;
-char input[30];
-char output[30];
+char input[50];
+char output[50];
 
 boolean DEBUG = false;
 
@@ -87,7 +87,13 @@ boolean grbl_cmd()
     grbl_status();
     if (Serial3.available() > 0);
     {
+            sprintf(gcode, "%s\n", gcode); 
             Serial3.write(gcode);
+            GRBLdata = Serial3.readString();
+            Serial.print("GBRL cmd output: ");
+            Serial.println(GRBLdata);
+
+
             grbl_status();
     }
 }
@@ -143,7 +149,7 @@ void loop() {
         //
         // InputData = Serial.readString();
         // InputData.toCharArray(input, 30);
-        Serial.readBytes(input, 30);
+        Serial.readBytes(input, sizeof(input));
 
         if ( input[0] == 'd' )
         {
