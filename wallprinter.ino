@@ -114,7 +114,7 @@ boolean grbl_status()
 
         if ( GRBLdata.startsWith("<Idle,") )
         {
-            Serial.write("ready");
+            Serial.write("ready\n");
             return true;
         }
         delay(10);
@@ -150,7 +150,14 @@ void serial_monitor()
         }
         else if ( input[0] == '?' )
         {
-            grbl_status();
+            if ( GBRL_MODE )
+            {
+                Serial3.write(input);
+            }
+            else
+            {
+                grbl_status();
+            }
         }
         else if ( input[0] == 't' )
         {
