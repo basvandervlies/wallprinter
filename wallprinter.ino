@@ -134,8 +134,8 @@ void serial_monitor()
         result = Serial.readBytes(input, sizeof(input)-1);
         input[result] = '\0';
 
-        // sprintf(output,"Input data: %s(%d)", input, result);
-        // Serial.println(output);
+        sprintf(output,"Input data: %s(%d)", input, result);
+        Serial.println(output);
 
 
         if ( input[0] == 'd' )
@@ -167,12 +167,12 @@ void serial_monitor()
         {
             Serial3.write("??");
         }
-        else if ( input[0] == 'g' )
+        else if (input[0] == 'l')
         {
             Serial.println("GRBL mode  enabled");
             GBRL_MODE = true;
         }
-        else if ( (input[0] == 'G') && ( result < 4 ) )
+        else if (input[0] == 'L')
         {
             Serial.println("GRBL mode  disabled");
             GBRL_MODE = false;
