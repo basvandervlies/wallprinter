@@ -206,10 +206,8 @@ void serial_gbrl()
 {
     if (Serial3.available() > 0) 
     {
-        Serial.println("gbrl");
         if ( GBRL_MODE )
         {
-            Serial.println("gbrl mode");
             grbl_output = Serial3.read();
             Serial.write(grbl_output);
         }
