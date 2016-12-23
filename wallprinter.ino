@@ -4,7 +4,7 @@ byte grbl_output;
 char output[50];
 
 boolean DEBUG = false;
-boolean RAW_MODE = false;
+boolean GBRL_MODE = false;
 
 // digital output pins
 //
@@ -86,7 +86,6 @@ boolean grbl_cmd()
 {
     int i; 
 
-    grbl_status();
     if (Serial3.available() > 0);
     {
             sprintf(gcode, "%s\n", gcode); 
@@ -96,7 +95,6 @@ boolean grbl_cmd()
             Serial.println(GRBLdata);
 
 
-            grbl_status();
     }
 }
 
@@ -104,54 +102,41 @@ boolean grbl_status()
 {
     char c;
     
-
-    if (Serial3.available() > 0);
+    for ( ;; )
     {
-
-        for ( ;; )
+        Serial3.write("?");
+        GRBLdata = Serial3.readString();
+        if (DEBUG)
         {
-            Serial3.write("?");
-            GRBLdata = Serial3.readString();
-            if (DEBUG)
-            {
-                Serial.print("GBRL output: ");
-                Serial.println(GRBLdata);
-            }
-
-            if ( GRBLdata.startsWith("<Idle,") )
-            {
-                return true;
-            }
-            delay(10);
-        }
-            /*
-        c = Serial3.peek();
-        if ( c == '<' )
-        {
-            GRBLdata = Serial3.readString();
             Serial.print("GBRL output: ");
             Serial.println(GRBLdata);
-            if ( GRBLdata.startsWith("<Idle,") )
-            {
-                Serial.print("GBRL output: ");
-                Serial.println(GRBLdata);
-            }
         }
-            */
+
+        if ( GRBLdata.startsWith("<Idle,") )
+        {
+            Serial.write("ready");
+            return true;
+        }
+        delay(10);
     }
 }
 
-void loop() {
+void serial_monitor()
+{
+    int result;
 
-
-    // put your main code here, to run repeatedly
     if (Serial.available() > 0) {
     
         // read the incoming byte and convert it char array for easy processign
         //
         // InputData = Serial.readString();
         // InputData.toCharArray(input, 30);
-        Serial.readBytes(input, sizeof(input));
+        result = Serial.readBytes(input, sizeof(input)-1);
+        input[result] = '\0';
+
+        // sprintf(output,"Input data: %s(%d)", input, result);
+        // Serial.println(output);
+
 
         if ( input[0] == 'd' )
         {
@@ -175,13 +160,15 @@ void loop() {
         {
             Serial3.write("??");
         }
-        else if ( input[0] == 'l' )
+        else if ( input[0] == 'g' )
         {
-            RAW_MODE = true;
+            Serial.println("GRBL mode  enabled");
+            GBRL_MODE = true;
         }
-        else if ( input[0] == 'L' )
+        else if ( (input[0] == 'G') && ( result < 4 ) )
         {
-            RAW_MODE = false;
+            Serial.println("GRBL mode  disabled");
+            GBRL_MODE = false;
         }
         else 
         {
@@ -189,12 +176,12 @@ void loop() {
             {
                 sprintf(output,"Input data: %s", input);
                 Serial.println(output);
-                if (RAW_MODE) 
+                if (GBRL_MODE) 
                 {
-                    Serial.println("RAW_MODE");
+                    Serial.println("GBRL_MODE");
                 }
             }
-            if ( RAW_MODE )
+            if ( GBRL_MODE )
             {
                 Serial3.write(input);
             }
@@ -207,10 +194,28 @@ void loop() {
         }
     }
 
+    // Clear/reset input data
+    input[0] = '\0';
+}
+
+void serial_gbrl()
+{
     if (Serial3.available() > 0) 
     {
-        grbl_output = Serial3.read();
-        Serial.write(grbl_output);
-    
+        if ( GBRL_MODE )
+        {
+            grbl_output = Serial3.read();
+            Serial.write(grbl_output);
+        }
+        else
+        {
+                grbl_status();
+        }
     }
+}
+
+void loop() 
+{
+    serial_monitor();
+    serial_gbrl();
 }
