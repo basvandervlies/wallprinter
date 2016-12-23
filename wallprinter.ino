@@ -45,7 +45,6 @@ int parse_line()
     }
     else 
     {
-        Serial.println("bas");
         if (DEBUG) 
         {
             sprintf(output, "gcode: %s\n", gcode);
@@ -132,10 +131,8 @@ void serial_monitor()
 
         // sprintf(output,"Input data: %s(%d)", input, result);
         // Serial.println(output);
-
-
-        Serial.println(GBRL_MODE);
-        Serial.println(DEBUG);
+        //Serial.println(GBRL_MODE);
+        //Serial.println(DEBUG);
 
 
         if ( input[0] == 'd' )
@@ -200,7 +197,6 @@ void serial_monitor()
         }
 
         // Clear/reset input data
-        Serial.println("end");
         input[0] = '\0';
     }
 
