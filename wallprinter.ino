@@ -3,8 +3,8 @@ char input[50];
 byte grbl_output;
 char output[50];
 
-boolean DEBUG = false;
-boolean GBRL_MODE = false;
+int DEBUG = 0;
+int GBRL_MODE = 0;
 
 // digital output pins
 //
@@ -15,6 +15,10 @@ const int black1_pin = 22;
 char gcode[10];
 int  cymk[4];
 
+
+
+int i;
+int result;
 
 void setup() {
     // put your setup code here, to run once:
@@ -28,10 +32,8 @@ void setup() {
   
 }
 
-boolean parse_line()
+int parse_line()
 {
-    int result;
-    int i;
 
     result = sscanf(input,"%[^,],%d,%d,%d,%d", gcode, &cymk[0], &cymk[1], &cymk[2], &cymk[3]);
 
@@ -39,10 +41,11 @@ boolean parse_line()
     {
         sprintf(output, "Error in input line, expected 5 args got: %d", result);
         Serial.println(output);
-        return false;
+        return 0;
     }
     else 
     {
+        Serial.println("bas");
         if (DEBUG) 
         {
             sprintf(output, "gcode: %s\n", gcode);
@@ -58,7 +61,7 @@ boolean parse_line()
             Serial.println("");
         }
     }
-    return true;
+    return 1;
 }
 
 void paint()
@@ -90,11 +93,6 @@ boolean grbl_cmd()
     {
             sprintf(gcode, "%s\n", gcode); 
             Serial3.write(gcode);
-            GRBLdata = Serial3.readString();
-            Serial.print("GBRL cmd output: ");
-            Serial.println(GRBLdata);
-
-
     }
 }
 
@@ -122,7 +120,6 @@ boolean grbl_status()
 
 void serial_monitor()
 {
-    int result;
 
     if (Serial.available() > 0) {
     
@@ -133,18 +130,22 @@ void serial_monitor()
         result = Serial.readBytes(input, sizeof(input)-1);
         input[result] = '\0';
 
-        //sprintf(output,"Input data: %s(%d)", input, result);
-        //Serial.println(output);
+        // sprintf(output,"Input data: %s(%d)", input, result);
+        // Serial.println(output);
+
+
+        Serial.println(GBRL_MODE);
+        Serial.println(DEBUG);
 
 
         if ( input[0] == 'd' )
         {
-            DEBUG=true;
+            DEBUG=1;
             Serial.println("DEBUG enabled");
         }
         else if ( input[0] == 'D' )
         {
-            DEBUG=false;
+            DEBUG=0;
             Serial.println("DEBUG disabled");
         }
         else if ( input[0] == '?' )
@@ -155,23 +156,15 @@ void serial_monitor()
                 grbl_status();
             }
         }
-        else if ( input[0] == 't' )
-        {
-            Serial3.write("G91 G1 F500 x100 y100\n");
-        }
-        else if ( input[0] == 's' )
-        {
-            Serial3.write("??");
-        }
         else if (input[0] == 'l')
         {
             Serial.println("GRBL mode  enabled");
-            GBRL_MODE = true;
+            GBRL_MODE = 1;
         }
         else if (input[0] == 'L')
         {
             Serial.println("GRBL mode  disabled");
-            GBRL_MODE = false;
+            GBRL_MODE = 0;
         }
         else 
         {
@@ -188,25 +181,39 @@ void serial_monitor()
             {
                 Serial3.write(input);
             }
-            else if ( parse_line() )
+            else 
             {
-                Serial.println("Do processing");
-                grbl_cmd();
-                paint();
+                result = parse_line();
+                if ( result )
+                {
+                    Serial.println("Do processing");
+                    grbl_cmd();
+                    paint();
+                }
+                else 
+                {
+                    GBRL_MODE=0;
+                    DEBUG=0;
+                    
+                }
             }
         }
+
+        // Clear/reset input data
+        Serial.println("end");
+        input[0] = '\0';
     }
 
-    // Clear/reset input data
-    input[0] = '\0';
 }
 
 void serial_gbrl()
 {
     if (Serial3.available() > 0) 
     {
+        Serial.println("gbrl");
         if ( GBRL_MODE )
         {
+            Serial.println("gbrl mode");
             grbl_output = Serial3.read();
             Serial.write(grbl_output);
         }
