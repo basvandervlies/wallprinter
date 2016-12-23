@@ -1,8 +1,10 @@
 String GRBLdata;
 char input[50];
+byte grbl_output;
 char output[50];
 
 boolean DEBUG = false;
+boolean RAW_MODE = false;
 
 // digital output pins
 //
@@ -173,19 +175,42 @@ void loop() {
         {
             Serial3.write("??");
         }
+        else if ( input[0] == 'l' )
+        {
+            RAW_MODE = true;
+        }
+        else if ( input[0] == 'L' )
+        {
+            RAW_MODE = false;
+        }
         else 
         {
             if (DEBUG) 
             {
                 sprintf(output,"Input data: %s", input);
                 Serial.println(output);
+                if (RAW_MODE) 
+                {
+                    Serial.println("RAW_MODE");
+                }
             }
-            if ( parse_line() )
+            if ( RAW_MODE )
+            {
+                Serial3.write(input);
+            }
+            else if ( parse_line() )
             {
                 Serial.println("Do processing");
                 grbl_cmd();
                 paint();
             }
         }
+    }
+
+    if (Serial3.available() > 0) 
+    {
+        grbl_output = Serial3.read();
+        Serial.write(grbl_output);
+    
     }
 }
