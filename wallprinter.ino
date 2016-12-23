@@ -104,7 +104,6 @@ boolean grbl_status()
     
     for ( ;; )
     {
-        Serial3.write("?");
         GRBLdata = Serial3.readString();
         if (DEBUG)
         {
@@ -134,8 +133,8 @@ void serial_monitor()
         result = Serial.readBytes(input, sizeof(input)-1);
         input[result] = '\0';
 
-        sprintf(output,"Input data: %s(%d)", input, result);
-        Serial.println(output);
+        //sprintf(output,"Input data: %s(%d)", input, result);
+        //Serial.println(output);
 
 
         if ( input[0] == 'd' )
@@ -150,11 +149,8 @@ void serial_monitor()
         }
         else if ( input[0] == '?' )
         {
-            if ( GBRL_MODE )
-            {
-                Serial3.write(input);
-            }
-            else
+            Serial3.write(input);
+            if ( ! GBRL_MODE )
             {
                 grbl_status();
             }
