@@ -1,6 +1,8 @@
-#define SERIAL3
+// #define SERIAL3
 
-
+/*
+ * buffer variables for input/output
+*/
 static char input[50];
 static char output[50];
 
@@ -11,13 +13,22 @@ static boolean GBRL_MODE = false;
 //
 const int black1_pin = 22;
 
-// parsed input variables
-//
-static char gcode[10];
-static int  cymk[4];
+/*
+ * buffer that hold the parsed line
+ * 0 ---> gcode
+ * 1 ---> c
+ * 2 ---> m
+ * 3 ---> y
+ * 4 ---> k
+*/
+char *parsed_values[5];
 
-int i;
-int result;
+/*
+ * variable used in functions
+*/
+unsigned int i;
+unsigned int value;
+char *pch;
 
 #ifdef SERIAL3
 
@@ -48,15 +59,22 @@ void setup() {
 int parse_line()
 {
 
-    //Serial.println(GBRL_MODE);
-    //Serial.println(DEBUG_MODE);
-    result = sscanf(input,"%[^,],%d,%d,%d,%d", gcode, &cymk[0], &cymk[1], &cymk[2], &cymk[3]);
-    //Serial.println(GBRL_MODE);
-    //Serial.println(DEBUG_MODE);
 
-    if ( result != 5 ) 
+    /*
+     * Must us strtok. sscanf is buggy, delimiter is ,
+    */
+    i = 0;
+    pch = strtok(input, ",");
+    while (pch != NULL)
+    { 
+        parsed_values[i++] = pch;
+        pch = strtok (NULL, ",");
+    }
+
+
+    if ( i != 5 ) 
     {
-        sprintf(output, "Error in input line, expected 5 args got: %d", result);
+        sprintf(output, "Error in input line, expected 5 args got: %d", i);
         Serial.println(output);
         return 0;
     }
@@ -64,14 +82,14 @@ int parse_line()
     {
         if (DEBUG_MODE) 
         {
-            sprintf(output, "gcode: %s\n", gcode);
+            sprintf(output, "gcode: %s\n", parsed_values[0]);
             Serial.println(output);
 
-            Serial.println("color c y m k: ");
-            for ( i=0; i<4; i++ )
+            Serial.println("color c m y k: ");
+            for ( i=1; i<5; i++ )
             {
                 
-                sprintf(output, "%d ", cymk[i]);
+                sprintf(output, "%s ", parsed_values[i]);
                 Serial.print(output);
             }
             Serial.println("");
@@ -82,17 +100,18 @@ int parse_line()
 
 void paint()
 {
-    for ( i=0; i<4; i++ )
+    for ( i=1; i<5; i++ )
     {
-        if (cymk[i] > 0)
+        value = atoi(parsed_values[i]);
+        if (value > 0)
         {
             digitalWrite(black1_pin, HIGH); 
             if (DEBUG_MODE)
             {
-                sprintf(output, "%d : %d\n", i, cymk[i]);
+                sprintf(output, "%d : %d\n", i, value);
                 Serial.write(output);
             }
-            delay(cymk[i]);
+            delay(value);
             digitalWrite(black1_pin, LOW); 
         }
     }
@@ -104,8 +123,8 @@ void gbrl_cmd()
 {
     if (Serial3.available() > 0);
     {
-            sprintf(gcode, "%s\n", gcode); 
-            Serial3.write(gcode);
+            sprintf(output, "%s\n", parsed_values[0]); 
+            Serial3.write(output);
     }
 }
 
@@ -114,7 +133,6 @@ boolean gbrl_status()
     for ( ;; )
     {
         GBRLdata = Serial3.readString();
-        GBRLdata = "<Idle";
         if (DEBUG_MODE)
         {
             Serial.print("GBRL output: ");
@@ -140,13 +158,13 @@ void serial_computer()
         //
         // InputData = Serial.readString();
         // InputData.toCharArray(input, 30);
-        result = Serial.readBytes(input, sizeof(input)-1);
-        input[result] = '\0';
+        i = Serial.readBytes(input, sizeof(input)-1);
+        input[i] = '\0';
 
         // sprintf(output,"Input data: %s(%d)", input, result);
         // Serial.println(output);
-        //Serial.println(GBRL_MODE);
-        //Serial.println(DEBUG_MODE);
+        // Serial.println(GBRL_MODE);
+        // Serial.println(DEBUG_MODE);
 
 
         if ( input[0] == 'd' )
@@ -205,8 +223,8 @@ void serial_computer()
             }
             else 
             {
-                result = parse_line();
-                if ( result )
+                i = parse_line();
+                if ( i )
                 {
                     Serial.println("Do processing");
 #ifdef SERIAL3
@@ -221,9 +239,9 @@ void serial_computer()
                 {
                     /*
                      * Bug in de code
-                    */
                     GBRL_MODE=false;
                     DEBUG_MODE=false;
+                    */
                     
                 }
             }
@@ -231,6 +249,7 @@ void serial_computer()
 
         // Clear/reset input data
         input[0] = '\0';
+        memset(parsed_values, 0, sizeof(parsed_values));
     }
 
 }
