@@ -1,4 +1,4 @@
-// #define SERIAL3
+#define GBRL_DEVICE
 
 /*
  * buffer variables for input/output
@@ -30,7 +30,7 @@ unsigned int i;
 unsigned int value;
 char *pch;
 
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
 
 String GBRLdata;
 byte gbrl_output;
@@ -45,7 +45,7 @@ void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
 
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
     Serial3.begin(115200);
     // Serial3.write("?");
 #endif
@@ -118,7 +118,7 @@ void paint()
     
 }
 
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
 void gbrl_cmd()
 {
     if (Serial3.available() > 0);
@@ -179,7 +179,7 @@ void serial_computer()
         }
         else if ( input[0] == '?' )
         {
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
             Serial3.write(input);
             if ( ! GBRL_MODE )
             {
@@ -213,7 +213,7 @@ void serial_computer()
             }
             if ( GBRL_MODE )
             {
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
                 Serial3.write(input);
 #else
                 sprintf(output,"Gbrl simulation mode direct write: %s", input);
@@ -227,7 +227,7 @@ void serial_computer()
                 if ( i )
                 {
                     Serial.println("Do processing");
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
                     gbrl_cmd();
 #else
                     Serial.println("Gbrl command: simulation mode");
@@ -256,7 +256,7 @@ void serial_computer()
 
 void serial_gbrl()
 {
-#ifdef SERIAL3
+#ifdef GBRL_DEVICE
     if (Serial3.available() > 0) 
     {
         if ( GBRL_MODE )
