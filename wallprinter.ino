@@ -1,13 +1,16 @@
-#define GBRL_DEVICE
+#define GRBL_DEVICE
 
 /*
  * buffer variables for input/output
 */
 static char input[50];
-static char output[50];
+static char output[70];
+
+static int input_size = 50;
 
 static boolean DEBUG_MODE = false;
-static boolean GBRL_MODE = false;
+static boolean GRBL_MODE = false;
+static boolean NEW_DATA = false;
 
 // digital output pins
 //
@@ -27,28 +30,19 @@ char *parsed_values[5];
  * variable used in functions
 */
 unsigned int i;
-unsigned int result;
 unsigned int value;
 char *pch;
-char c;
-String InputData;
 
-#ifdef GBRL_DEVICE
-
-String GBRLdata;
-byte gbrl_output;
-
-#else
-
-static boolean gbrl_simulation=false;
-
+#ifdef GRBL_DEVICE
+String GRBLdata;
 #endif
+
 
 void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
 
-#ifdef GBRL_DEVICE
+#ifdef GRBL_DEVICE
     Serial3.begin(115200);
     // Serial3.write("?");
 #endif
@@ -59,7 +53,7 @@ void setup() {
   
 }
 
-int parse_line()
+boolean parse_line()
 {
 
     /*
@@ -76,9 +70,9 @@ int parse_line()
 
     if ( i != 5 ) 
     {
-        sprintf(output, "Error input %s(%d)", input, i);
+        sprintf(output, "Error input %s(%d<5)", input, i);
         Serial.println(output);
-        return 0;
+        return false;
     }
     else 
     {
@@ -97,7 +91,7 @@ int parse_line()
             Serial.println("");
         }
     }
-    return 1;
+    return true;
 }
 
 void paint()
@@ -120,59 +114,112 @@ void paint()
     
 }
 
-#ifdef GBRL_DEVICE
-void gbrl_cmd()
+#ifdef GRBL_DEVICE
+
+void grbl_cmd()
 {
     sprintf(output, "%s\n", parsed_values[0]); 
     Serial3.write(output);
 
-    // Must read the ok from the stack else gbrl_status infinite loop
-    /*
-    while (Serial3.available() > 0)
-    {
-        GBRLdata = Serial3.readString();
-        if ( DEBUG_MODE )
-        {
-            Serial.println(GBRLdata);
-        }
-    }
-    */
+    grbl_response();
 }
 
-boolean gbrl_status()
+boolean grbl_ready()
 {
     delay(50);
     for ( ;; )
     {
         Serial3.write("?\n");
-        GBRLdata = Serial3.readString();
-        if (DEBUG_MODE || GBRL_MODE)
+        GRBLdata = Serial3.readString();
+        if (DEBUG_MODE || GRBL_MODE)
         {
-            Serial.print("GBRL output: ");
-            Serial.println(GBRLdata);
-            Serial.println("end GBRL output: ");
+            Serial.println("GRBL output begin");
+            Serial.println(GRBLdata);
+            Serial.println("GRBL output end");
         }
 
-        if ( GBRLdata.startsWith("<Idle,") )
+        if ( GRBLdata.startsWith("<Idle,") )
         {
             return true;
         }
         delay(10);
     }
 }
+
+void grbl_response()
+{
+    char rc;
+
+    while (Serial3.available() > 0) 
+    {
+        rc = Serial3.read();
+        if ( GRBL_MODE || DEBUG_MODE )
+        {
+            Serial.write(rc);
+        }
+    }
+}
+
+void grbl_write()
+{
+    if ( DEBUG_MODE )
+    {
+        Serial.println("write grbl device");
+    }
+
+    Serial3.write(input);
+    Serial3.write("\n");
+
+    grbl_response();
+}
+
+#else
+
+void grbl_cmd()
+{
+    sprintf(output, "grbl cmd simulation mode: %s\n", parsed_values[0]); 
+    Serial.write(output);
+}
+
+boolean grbl_ready()
+{
+    Serial.println("Grbl status request: simulation mode");
+    return true;
+}
+
+void grbl_write()
+{
+    sprintf(output,"Grbl simulation mode direct write: %s", input);
+    Serial.println(output);
+}
+
 #endif
 
-void serial_computer()
+void wall_printer()
 {
+    if ( parse_line() )
+    {
+        if ( DEBUG_MODE )
+        {
+            Serial.println("Control plotter device");
+        }
+        
+        grbl_cmd();
+        grbl_ready();
+        paint();
+        Serial.println("ready");
+    }
+}
 
-    if (Serial.available() > 0) {
-    
-        // read the incoming byte and convert it char array for easy processign
-        //
-        // InputData = Serial.readString();
-        // InputData.toCharArray(input, 30);
-        InputData = Serial.readStringUntil('\n');
-        InputData.toCharArray(input, 50);
+void process_data()
+{
+    if ( NEW_DATA )
+    {
+        if (DEBUG_MODE) 
+        {
+            sprintf(output,"Input data: %s", input);
+            Serial.println(output);
+        }
 
         if ( input[0] == 'd' )
         {
@@ -186,120 +233,69 @@ void serial_computer()
         }
         else if ( input[0] == '?' )
         {
-#ifdef GBRL_DEVICE
-            gbrl_status();
-            if ( ! GBRL_MODE )
+            grbl_ready();
+            if ( ! GRBL_MODE )
             {
                 Serial.println("ready");
             }
-#else
-            Serial.println("gbrl status request: simulation mode");
-            gbrl_simulation=true;
-#endif
         }
         else if (input[0] == 'l')
         {
-            Serial.println("GBRL mode  enabled");
-            GBRL_MODE = true;
+            Serial.println("GRBL mode  enabled");
+            GRBL_MODE = true;
         }
         else if (input[0] == 'L')
         {
-            Serial.println("GBRL mode  disabled");
-            GBRL_MODE = false;
+            Serial.println("GRBL mode  disabled");
+            GRBL_MODE = false;
         }
         else 
         {
-            if (DEBUG_MODE) 
+            if ( GRBL_MODE )
             {
-                sprintf(output,"Input data: %s", input);
-                Serial.println(output);
-                if (GBRL_MODE) 
-                {
-                    Serial.println("GBRL_MODE");
-                }
-            }
-            if ( GBRL_MODE )
-            {
-#ifdef GBRL_DEVICE
-                if ( DEBUG_MODE )
-                {
-                    Serial.println("write gbrl device");
-                }
-                Serial3.write(input);
-                Serial3.write("\n");
-#else
-                sprintf(output,"Gbrl simulation mode direct write: %s", input);
-                Serial.println(output);
-                gbrl_simulation=true;
-#endif
+                grbl_write();
             }
             else 
             {
-                i = parse_line();
-                if ( i )
-                {
-                    if ( DEBUG_MODE )
-                    {
-                        Serial.println("Do processing");
-                    }
-#ifdef GBRL_DEVICE
-                    gbrl_cmd();
-                    gbrl_status();
-#else
-                    Serial.println("Gbrl command: simulation mode");
-                    gbrl_simulation=true;
-#endif
-                    paint();
-                    Serial.println("ready");
-                }
-                else 
-                {
-                    /*
-                     * Bug in de code
-                    GBRL_MODE=false;
-                    DEBUG_MODE=false;
-                    */
-                    
-                }
+                wall_printer();
             }
         }
 
         // Clear/reset input data
-        input[0] = '\0';
         memset(parsed_values, 0, sizeof(parsed_values));
+        NEW_DATA = false;
     }
-
 }
 
-void serial_gbrl()
+void receive_data()
 {
-#ifdef GBRL_DEVICE
-    if (Serial3.available() > 0) 
+    char endMarker = '\n';
+    char rc;
+    static int index = 0;
+
+    while ( (Serial.available() > 0) && (NEW_DATA == false) ) 
     {
-        if ( GBRL_MODE )
+        rc = Serial.read(); 
+        if (rc != endMarker) 
         {
-            gbrl_output = Serial3.read();
-            Serial.write(gbrl_output);
+            input[index] = rc;
+            index++;
+            if (index >= input_size) 
+            {
+               index = input_size - 1;
+            }
+        }
+        else 
+        {
+            input[index] = '\0'; // terminate the string
+            index = 0;
+            NEW_DATA = true;
         }
     }
-#else
-    if ( gbrl_simulation)  
-    {
-        if ( GBRL_MODE )
-        {
-                Serial.println("\tGbrl_simulation read");
-        }
-        else
-        {
-            Serial.println("Gbrl simulation: ready");
-        }
-        gbrl_simulation = false;
-    }
-#endif
 }
 
 void loop() 
 {
-    serial_computer();
-    serial_gbrl();
+    receive_data();
+    process_data();
 }
