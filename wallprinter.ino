@@ -27,8 +27,11 @@ char *parsed_values[5];
  * variable used in functions
 */
 unsigned int i;
+unsigned int result;
 unsigned int value;
 char *pch;
+char c;
+String InputData;
 
 #ifdef GBRL_DEVICE
 
@@ -59,7 +62,6 @@ void setup() {
 int parse_line()
 {
 
-
     /*
      * Must us strtok. sscanf is buggy, delimiter is ,
     */
@@ -74,7 +76,7 @@ int parse_line()
 
     if ( i != 5 ) 
     {
-        sprintf(output, "Error in input line, expected 5 args got: %d", i);
+        sprintf(output, "Error input %s(%d)", input, i);
         Serial.println(output);
         return 0;
     }
@@ -121,27 +123,38 @@ void paint()
 #ifdef GBRL_DEVICE
 void gbrl_cmd()
 {
-    if (Serial3.available() > 0);
+    sprintf(output, "%s\n", parsed_values[0]); 
+    Serial3.write(output);
+
+    // Must read the ok from the stack else gbrl_status infinite loop
+    /*
+    while (Serial3.available() > 0)
     {
-            sprintf(output, "%s\n", parsed_values[0]); 
-            Serial3.write(output);
+        GBRLdata = Serial3.readString();
+        if ( DEBUG_MODE )
+        {
+            Serial.println(GBRLdata);
+        }
     }
+    */
 }
 
 boolean gbrl_status()
 {
+    delay(50);
     for ( ;; )
     {
+        Serial3.write("?\n");
         GBRLdata = Serial3.readString();
-        if (DEBUG_MODE)
+        if (DEBUG_MODE || GBRL_MODE)
         {
             Serial.print("GBRL output: ");
             Serial.println(GBRLdata);
+            Serial.println("end GBRL output: ");
         }
 
         if ( GBRLdata.startsWith("<Idle,") )
         {
-            Serial.write("ready\n");
             return true;
         }
         delay(10);
@@ -158,14 +171,8 @@ void serial_computer()
         //
         // InputData = Serial.readString();
         // InputData.toCharArray(input, 30);
-        i = Serial.readBytes(input, sizeof(input)-1);
-        input[i] = '\0';
-
-        // sprintf(output,"Input data: %s(%d)", input, result);
-        // Serial.println(output);
-        // Serial.println(GBRL_MODE);
-        // Serial.println(DEBUG_MODE);
-
+        InputData = Serial.readStringUntil('\n');
+        InputData.toCharArray(input, 50);
 
         if ( input[0] == 'd' )
         {
@@ -180,10 +187,10 @@ void serial_computer()
         else if ( input[0] == '?' )
         {
 #ifdef GBRL_DEVICE
-            Serial3.write(input);
+            gbrl_status();
             if ( ! GBRL_MODE )
             {
-                gbrl_status();
+                Serial.println("ready");
             }
 #else
             Serial.println("gbrl status request: simulation mode");
@@ -214,7 +221,12 @@ void serial_computer()
             if ( GBRL_MODE )
             {
 #ifdef GBRL_DEVICE
+                if ( DEBUG_MODE )
+                {
+                    Serial.println("write gbrl device");
+                }
                 Serial3.write(input);
+                Serial3.write("\n");
 #else
                 sprintf(output,"Gbrl simulation mode direct write: %s", input);
                 Serial.println(output);
@@ -226,14 +238,19 @@ void serial_computer()
                 i = parse_line();
                 if ( i )
                 {
-                    Serial.println("Do processing");
+                    if ( DEBUG_MODE )
+                    {
+                        Serial.println("Do processing");
+                    }
 #ifdef GBRL_DEVICE
                     gbrl_cmd();
+                    gbrl_status();
 #else
                     Serial.println("Gbrl command: simulation mode");
                     gbrl_simulation=true;
 #endif
                     paint();
+                    Serial.println("ready");
                 }
                 else 
                 {
@@ -263,10 +280,6 @@ void serial_gbrl()
         {
             gbrl_output = Serial3.read();
             Serial.write(gbrl_output);
-        }
-        else
-        {
-                gbrl_status();
         }
     }
 #else
