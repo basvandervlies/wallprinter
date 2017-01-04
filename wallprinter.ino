@@ -6,6 +6,8 @@
 static char input[50];
 static char output[70];
 
+static char grbl_output[70];
+
 static int input_size = 50;
 
 static boolean DEBUG_MODE = false;
@@ -29,7 +31,7 @@ char *parsed_values[5];
 /*
  * variable used in functions
 */
-unsigned int i;
+unsigned int i,j;
 unsigned int value;
 char *pch;
 
@@ -96,7 +98,7 @@ boolean parse_line()
 
 void paint()
 {
-    for ( i=1; i<5; i++ )
+    for ( i=4; i<5; i++ )
     {
         value = atoi(parsed_values[i]);
         if (value > 0)
@@ -121,29 +123,45 @@ void grbl_cmd()
     sprintf(output, "%s\n", parsed_values[0]); 
     Serial3.write(output);
 
-    grbl_response();
+    // time consuming
+    //grbl_response();
 }
 
 boolean grbl_ready()
 {
-    delay(50);
+    
+    delay(100);
     for ( ;; )
     {
         Serial3.write("?\n");
-        GRBLdata = Serial3.readString();
-        if (DEBUG_MODE || GRBL_MODE)
-        {
-            Serial.println("GRBL output begin");
-            Serial.println(GRBLdata);
-            Serial.println("GRBL output end");
-        }
-
-        if ( GRBLdata.startsWith("<Idle,") )
+        delay(100);
+        // grbl_response();
+        if ( grbl_status_line() )
         {
             return true;
         }
-        delay(10);
     }
+}
+
+boolean grbl_status_line()
+{
+    j = 0;
+    while (Serial3.available() > 0) 
+    {
+        i = Serial3.readBytesUntil('\n',grbl_output, sizeof(grbl_output));
+        grbl_output[i] = '\0';
+        if ( DEBUG_MODE )
+        {
+            Serial.println(j);
+            Serial.println(grbl_output);
+        }
+        if ( strncmp(grbl_output,"<Idle", 5) == 0 )
+        {
+            return true;
+        }
+        j++;
+    }
+    return false;
 }
 
 void grbl_response()
@@ -211,6 +229,15 @@ void wall_printer()
     }
 }
 
+void wall_printer_test_mode()
+{
+    strcpy(input, "G91 G1 F15000 X10,0,0,0,1000");
+    for  ( i=0 ; i < 1; i++ )
+    {
+        wall_printer();
+    }
+}
+
 void process_data()
 {
     if ( NEW_DATA )
@@ -248,6 +275,11 @@ void process_data()
         {
             Serial.println("GRBL mode  disabled");
             GRBL_MODE = false;
+        }
+        else if (input[0] == 't')
+        {
+            Serial.println("wall printer test mode");
+            wall_printer_test_mode();
         }
         else 
         {
