@@ -33,6 +33,7 @@ char *parsed_values[5];
 */
 unsigned int i,j;
 unsigned int value;
+float paint_time;
 char *pch;
 
 #ifdef GRBL_DEVICE
@@ -213,6 +214,49 @@ void grbl_write()
 
 #endif
 
+void wall_printer_one_board()
+{
+    if ( parse_line() )
+    {
+        if ( DEBUG_MODE )
+        {
+            Serial.println("wall_printer_one_board");
+        }
+
+        sprintf(output, "%s\n", parsed_values[0]); 
+        Serial3.write(output);
+
+        value = atoi(parsed_values[4]);
+        paint_time = value / 1000.0;
+
+        strcpy(output, "M3 S1000\n");
+        Serial3.write(output);
+
+        sprintf(output, "G4 P%f\n", paint_time );
+        if ( DEBUG_MODE )
+        {
+            Serial.println(output);
+        }
+
+        Serial3.write(output);
+
+        strcpy(output, "M3 S0\n");
+        Serial3.write(output);
+        
+        grbl_ready();
+
+        /*
+         * Long black values must we give the grbl some time
+        */
+        if ( value > 201 ) {
+            value = value - 200;
+            delay(value);
+        }
+
+        Serial.println("ready");
+    }
+}
+
 void wall_printer()
 {
     if ( parse_line() )
@@ -229,10 +273,19 @@ void wall_printer()
     }
 }
 
+void wall_printer_grbl_test_mode()
+{
+    strcpy(input, "G91 G1 F15000 X10,0,0,0,500");
+    for  ( i=0 ; i < 1; i++ )
+    {
+        wall_printer_one_board();
+    }
+}
+
 void wall_printer_test_mode()
 {
     strcpy(input, "G91 G1 F15000 X10,0,0,0,1000");
-    for  ( i=0 ; i < 1; i++ )
+    for  ( i=0 ; i < 4; i++ )
     {
         wall_printer();
     }
@@ -281,6 +334,11 @@ void process_data()
             Serial.println("wall printer test mode");
             wall_printer_test_mode();
         }
+        else if (input[0] == 'T')
+        {
+            Serial.println("wall printer grbl test mode");
+            wall_printer_grbl_test_mode();
+        }
         else 
         {
             if ( GRBL_MODE )
@@ -289,7 +347,8 @@ void process_data()
             }
             else 
             {
-                wall_printer();
+                //wall_printer();
+                wall_printer_one_board();
             }
         }
 
