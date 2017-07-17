@@ -25,6 +25,7 @@ const int black1_pin = 22;
  * 2 ---> m
  * 3 ---> y
  * 4 ---> k
+ * 5 ---> gbrl_poll_delay_time not used
 */
 char *parsed_values[5];
 
@@ -91,7 +92,12 @@ boolean parse_line()
                 sprintf(output, "%s ", parsed_values[i]);
                 Serial.print(output);
             }
+/*
+            sprintf(output, "grbl_poll_delay_time: %s\n", parsed_values[5]);
+            Serial.print(output);
             Serial.println("");
+*/
+
         }
     }
     return true;
@@ -132,10 +138,13 @@ boolean grbl_ready()
 {
     
     delay(100);
+    value = 100;
     for ( ;; )
     {
         Serial3.write("?\n");
-        delay(100);
+        delay(value);
+        value = value * 1.1;
+
         // grbl_response();
         if ( grbl_status_line() )
         {
@@ -243,7 +252,6 @@ void wall_printer_one_board()
         strcpy(output, "M3 S0\n");
         Serial3.write(output);
         
-        grbl_ready();
 
         /*
          * Long black values must we give the grbl some time
@@ -252,6 +260,8 @@ void wall_printer_one_board()
             value = value - 200;
             delay(value);
         }
+
+        grbl_ready();
 
         Serial.println("ready");
     }
@@ -275,8 +285,8 @@ void wall_printer()
 
 void wall_printer_grbl_test_mode()
 {
-    strcpy(input, "G91 G1 F15000 X10,0,0,0,500");
-    for  ( i=0 ; i < 1; i++ )
+    strcpy(input, "G91 G1 F15000 X10,0,0,0,500,100");
+    for  ( i=0 ; i < 2; i++ )
     {
         wall_printer_one_board();
     }
@@ -284,7 +294,7 @@ void wall_printer_grbl_test_mode()
 
 void wall_printer_test_mode()
 {
-    strcpy(input, "G91 G1 F15000 X10,0,0,0,1000");
+    strcpy(input, "G91 G1 F15000 X10,0,0,0,1000,100");
     for  ( i=0 ; i < 4; i++ )
     {
         wall_printer();
